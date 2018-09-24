@@ -16,7 +16,6 @@ K.set_image_data_format('channels_last')
 import matplotlib.pyplot as plt
 from matplotlib.pyplot import imshow
 
-
 # ----------------------------------------------------------------
 # load and normalize the dataset and learn about its shapes.
 
@@ -64,7 +63,7 @@ def Cifar10Model(input_shape):
     x = Flatten()(x)
     x = Dense(1, activation='sigmoid', name='fc')(x)
 
-    model = Model(inputs=x_input, outputs=x, name='happyModel')
+    model = Model(inputs=x_input, outputs=x, name='cifar10Model')
 
     return model
 
