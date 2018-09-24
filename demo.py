@@ -1,4 +1,5 @@
 import numpy as np
+import h5py
 from keras import layers
 from keras.layers import Input, Dense, Activation, ZeroPadding2D, BatchNormalization, Flatten, Conv2D
 from keras.layers import AveragePooling2D, MaxPooling2D, Dropout, GlobalMaxPooling2D, GlobalAveragePooling2D
@@ -9,72 +10,122 @@ from keras.utils.data_utils import get_file
 from keras.applications.imagenet_utils import preprocess_input
 from keras.utils.vis_utils import model_to_dot
 from keras.utils import plot_model
-from keras.datasets import cifar10
+from matplotlib.pyplot import imshow
 
 import keras.backend as K
 K.set_image_data_format('channels_last')
 import matplotlib.pyplot as plt
-from matplotlib.pyplot import imshow
 
 # ----------------------------------------------------------------
-# load and normalize the dataset and learn about its shapes.
+class HappyCNN:
+    def __init__(self, train=True, has_weights=False):
+        # hyper parameter
+        max_epoch = 40
+        batch_size = 16
 
-(X_train, y_train), (X_test, y_test) = cifar10.load_data()
-print(X_train.shape, y_train.shape)
+        X_train, y_train, X_test, y_test, classes = self.load_dataset()
+        print(X_train.shape, y_train.shape)
 
-# Normalize image vectors
-X_train = X_train/255.
-X_test = X_test/255.
+        # Normalize image vectors
+        self.X_train = X_train / 255.
+        self.X_test = X_test / 255.
 
-# Reshape
-Y_train = y_train
-Y_test = y_test
+        # Reshape
+        self.Y_train = y_train.T
+        self.Y_test = y_test.T
 
-print("number of training examples = " + str(X_train.shape[0]))
-print("number of test examples = " + str(X_test.shape[0]))
-print("X_train shape: " + str(X_train.shape))
-print("Y_train shape: " + str(Y_train.shape))
-print("X_test shape: " + str(X_test.shape))
-print("Y_test shape: " + str(Y_test.shape))
+        print("number of training examples = " + str(self.X_train.shape[0]))
+        print("number of test examples = " + str(self.X_test.shape[0]))
+        print("X_train shape: " + str(self.X_train.shape))
+        print("Y_train shape: " + str(self.Y_train.shape))
+        print("X_test shape: " + str(self.X_test.shape))
+        print("Y_test shape: " + str(self.Y_test.shape))
+
+        # create the model.
+        self.model = self.BuildModel(X_train.shape[1:])
+        # compile the model.
+        self.model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
+
+        if train:
+            self.train(max_epoch, batch_size, has_weights)
+
+    def load_dataset(self):
+        train_dataset = h5py.File('datasets/train_happy.h5', "r")
+        train_set_x_orig = np.array(train_dataset["train_set_x"][:])  # your train set features
+        train_set_y_orig = np.array(train_dataset["train_set_y"][:])  # your train set labels
+
+        test_dataset = h5py.File('datasets/test_happy.h5', "r")
+        test_set_x_orig = np.array(test_dataset["test_set_x"][:])  # your test set features
+        test_set_y_orig = np.array(test_dataset["test_set_y"][:])  # your test set labels
+
+        classes = np.array(test_dataset["list_classes"][:])  # the list of classes
+
+        train_set_y_orig = train_set_y_orig.reshape((1, train_set_y_orig.shape[0]))
+        test_set_y_orig = test_set_y_orig.reshape((1, test_set_y_orig.shape[0]))
+
+        return train_set_x_orig, train_set_y_orig, test_set_x_orig, test_set_y_orig, classes
+
+    def mean_pred(self, y_true, y_pred):
+        return K.mean(y_pred)
+
+    def BuildModel(self, input_shape):
+        """
+        Implementation of the Cifar10Model.
+
+        Arguments:
+        input_shape -- shape of the images of the dataset
+
+        Returns:
+        model -- a Model() instance in Keras
+        """
+        x_input = Input(input_shape)
+
+        x = ZeroPadding2D((3, 3))(x_input)
+        x = Conv2D(32, (7, 7), strides=(1, 1), name='conv0')(x)
+        x = BatchNormalization(axis=3, name='btn0')(x)
+        x = Activation('relu')(x)
+
+        x = MaxPooling2D((2, 2), name='max_pool')(x)
+
+        x = Flatten()(x)
+        x = Dense(1, activation='sigmoid', name='fc')(x)
+
+        model = Model(inputs=x_input, outputs=x, name='cifar10Model')
+
+        return model
+
+    def train(self, max_epoch, batch_size, has_weights):
+        if has_weights:
+            cur_model = self.model.load_weights('happycnn.h5')
+        else:
+            cur_model = self.model
+
+        cur_model.fit(x=self.X_train, y=self.Y_train, epochs=max_epoch, batch_size=batch_size)
+        cur_model.save_weights('happycnn.h5')
+
+    def test(self):
+        self.model.load_weights('happycnn.h5')
+        preds = self.model.evaluate(x=self.X_test, y=self.Y_test)
+        print()
+        print("Loss = " + str(preds[0]))
+        print("Test Accuracy = " + str(preds[1]))
+
+    def predict(self, path):
+        # 'images/test.jpg'
+        img_path = path
+        img = image.load_img(img_path, target_size=(64, 64))
+        imshow(img)
+
+        x = image.img_to_array(img)
+        x = np.expand_dims(x, axis=0)
+        x = preprocess_input(x)
+
+        self.model.load_weights('happycnn.h5')
+        print(self.model.predict(x))
 
 
 # ----------------------------------------------------------------
-# GRADED FUNCTION: Cifar10Model
-
-def Cifar10Model(input_shape):
-    """
-    Implementation of the Cifar10Model.
-
-    Arguments:
-    input_shape -- shape of the images of the dataset
-
-    Returns:
-    model -- a Model() instance in Keras
-    """
-    x_input = Input(input_shape)
-
-    x = ZeroPadding2D((3, 3))(x_input)
-    x = Conv2D(32, (7, 7), strides=(1, 1), name='conv0')(x)
-    x = BatchNormalization(axis=3, name='btn0')(x)
-    x = Activation('relu')(x)
-
-    x = MaxPooling2D((2, 2), name='max_pool')(x)
-
-    x = Flatten()(x)
-    x = Dense(1, activation='sigmoid', name='fc')(x)
-
-    model = Model(inputs=x_input, outputs=x, name='cifar10Model')
-
-    return model
-
-
-# ----------------------------------------------------------------
-# create the model.
-cifar10Model = Cifar10Model(X_train.shape[1:])
-
-# compile the model.
-cifar10Model.compile(optimizer="adam", loss="binary_crossentropy", metrics=["accuracy"])
-
-# train the model.
-cifar10Model.fit(x=X_train, y=Y_train, epochs=40, batch_size=16)
-
+if __name__ == "__main__":
+    model = HappyCNN(train=False, has_weights=True)
+    model.test()
+    model.predict('datasets/test.jpg')
