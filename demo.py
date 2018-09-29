@@ -21,7 +21,7 @@ class HappyCNN:
     def __init__(self, train=True, has_weights=False):
         # hyper parameter
         max_epoch = 40
-        batch_size = 16
+        batch_size = 40
 
         X_train, y_train, X_test, y_test, classes = self.load_dataset()
         print(X_train.shape, y_train.shape)
@@ -96,12 +96,10 @@ class HappyCNN:
 
     def train(self, max_epoch, batch_size, has_weights):
         if has_weights:
-            cur_model = self.model.load_weights('happycnn.h5')
-        else:
-            cur_model = self.model
+            self.model.load_weights('happycnn.h5')
 
-        cur_model.fit(x=self.X_train, y=self.Y_train, epochs=max_epoch, batch_size=batch_size)
-        cur_model.save_weights('happycnn.h5')
+        self.model.fit(x=self.X_train, y=self.Y_train, epochs=max_epoch, batch_size=batch_size)
+        self.model.save_weights('happycnn.h5')
 
     def test(self):
         self.model.load_weights('happycnn.h5')
