@@ -16,15 +16,27 @@ print(np.array(data['x_test']).shape)
 print(np.array(data['y_train']).shape)
 print(data['y_train'][0])
 
-m = 140
-Tx = 1152
+f = 128
+time = 3
+start = time * f
+Ts = 1152
+total_num = 140
+m = 100
+test_num = 40
+Tx = 1152 - time * f  # 1152 - 3*128 = 768
 Ty = 1
 channels = 3
 classes = 2
-X_train = np.array(data['x_train']).transpose(2, 0, 1)
-Y_train = np.zeros((m, 1, 2))
-for i in range(m):
-    Y_train[i] = np.array(list(map(lambda x: to_categorical(x, num_classes=2), data['y_train'][i]-1)))
+X = np.array(data['x_train'])[:][:][start:]
+X = X.transpose(2, 0, 1)
+Y = np.zeros((total_num, 1, 2))
+for i in range(total_num):
+    Y[i] = np.array(list(map(lambda x: to_categorical(x, num_classes=2), data['y_train'][i]-1)))
+# 划分训练集和测试集
+X_train = X[0:m][:][:]
+X_test = X[m:][:][:]
+Y_train = Y[0:m][:][:]
+Y_test = Y[m:][:][:]
 print('origin:', data['y_train'])
 print('after map to one-hot:', Y_train)
 print(X_train.shape)
@@ -68,7 +80,7 @@ output_layer = Dense(classes, activation=softmax)
 
 # GRADED FUNCTION: model
 
-def model(Tx, Ty, n_a, n_s, human_vocab_size, machine_vocab_size):
+def model(Tx, Ty, n_a, n_s, channels, classes):
     """
     Arguments:
     Tx -- length of the input sequence
@@ -141,7 +153,24 @@ o1 = np.array(outputs)
 print(o1.shape)
 print(X_train.shape)
 
-model.fit([X_train, s0, c0], outputs, epochs=1000, batch_size=20)
+# model.fit([X_train, s0, c0], outputs, epochs=1, batch_size=100)
 
-model.save_weights('models/model.h5')
+# model.save_weights('models/model.h5')
+
+sum = 0
+print('X_test:', X_test.shape)
+print('Y_test:', Y_test.shape)
+for i in range(test_num):
+    test = np.expand_dims(X_test[i][:][:], axis=0)
+    prediction = model.predict([test, s0, c0])
+    prediction = np.argmax(prediction, axis=-1) + 1
+    label = np.argmax(Y_test[i], axis=-1) + 1
+    print(prediction, label)
+    if prediction == label:
+        sum += 1
+
+print('result: ', sum*1.0/test_num)
+
+
+
 
